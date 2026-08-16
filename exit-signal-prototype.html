@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exit Signal — Liquidity Transparency Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Source+Serif+4:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #0F1B2B;
+    --ink-soft: #1B2A3D;
+    --paper: #F6F3EC;
+    --paper-dim: #EDE8DC;
+    --line: rgba(15,27,43,0.12);
+    --amber: #C8862B;
+    --amber-soft: #E9C68A;
+    --teal: #2E7D6B;
+    --teal-soft: #BFE0D6;
+    --rose: #B5502F;
+    --rose-soft: #EFC9B8;
+    --white: #FFFFFF;
+    --shadow: 0 12px 32px rgba(15,27,43,0.10);
+    --radius: 18px;
+    font-size: 16px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  .app {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+
+  /* ---------- HEADER ---------- */
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 28px;
+    margin-bottom: 44px;
+    flex-wrap: wrap;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 10px;
+  }
+
+  .masthead h1 {
+    font-family: 'Fraunces', serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(32px, 4.4vw, 52px);
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .masthead h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--amber);
+  }
+
+  .masthead-meta {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: rgba(15,27,43,0.55);
+    line-height: 1.7;
+    min-width: 220px;
+  }
+
+  .masthead-meta strong { color: var(--ink); font-weight: 500; }
+
+  .subhead {
+    font-size: 17px;
+    line-height: 1.6;
+    color: rgba(15,27,43,0.68);
+    max-width: 640px;
+    margin: 18px 0 0;
+  }
+
+  /* ---------- SECTION LABELS ---------- */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 72px 0 24px;
+  }
+  .section-label .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 5px 10px;
+    border-radius: 5px;
+  }
+  .section-label .txt {
+    font-size: 14.5px;
+    color: rgba(15,27,43,0.55);
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  /* ---------- SCENARIO STRIP ---------- */
+  .scenario {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .scenario-cell {
+    background: var(--white);
+    padding: 22px 24px;
+  }
+  .scenario-cell .k {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(15,27,43,0.45);
+    margin-bottom: 8px;
+  }
+  .scenario-cell .v {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    line-height: 1.3;
+  }
+  .scenario-cell.problem .v { color: var(--rose); }
+
+  /* ---------- BOND LIST (BEFORE) ---------- */
+  .bond-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .bond-row {
+    display: grid;
+    grid-template-columns: 1.6fr 0.9fr 0.9fr 0.9fr auto;
+    align-items: center;
+    gap: 20px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 22px;
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  .bond-row:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+  .bond-name-block .issuer {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+  .bond-name-block .isin {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: rgba(15,27,43,0.45);
+  }
+
+  .stat .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(15,27,43,0.45); margin-bottom: 4px; }
+  .stat .v { font-family: 'Source Serif 4', serif; font-weight: 600; font-size: 17px; }
+
+  .rating-pill {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--paper-dim);
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .cta-mini {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    padding: 9px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .cta-mini:hover { background: var(--ink); color: var(--paper); }
+
+  /* ---------- BADGE (THE SIGNATURE ELEMENT) ---------- */
+  .liq-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px 7px 8px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    position: relative;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .liq-badge .pulse-wrap {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
+  .liq-badge .pulse-core {
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+  }
+  .liq-badge .pulse-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    opacity: 0;
+    animation: liqPulse 2.6s ease-out infinite;
+  }
+  .liq-badge .pulse-ring.r2 { animation-delay: 0.9s; }
+
+  @keyframes liqPulse {
+    0%   { transform: scale(0.5); opacity: 0.55; }
+    80%  { transform: scale(1.35); opacity: 0; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .liq-badge .label {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .liq-badge .label .tier {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .liq-badge .label .days {
+    font-size: 11px;
+    opacity: 0.75;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .liq-badge.high { background: var(--teal-soft); color: var(--teal); border-color: rgba(46,125,107,0.25); }
+  .liq-badge.high .pulse-core { background: var(--teal); }
+
+  .liq-badge.medium { background: var(--amber-soft); color: #8A5A17; border-color: rgba(200,134,43,0.3); }
+  .liq-badge.medium .pulse-core { background: var(--amber); }
+
+  .liq-badge.low { background: var(--rose-soft); color: var(--rose); border-color: rgba(181,80,47,0.3); }
+  .liq-badge.low .pulse-core { background: var(--rose); }
+  .liq-badge.low .pulse-ring { animation-duration: 1.6s; }
+
+  /* ---------- TOOLTIP ---------- */
+  .liq-tooltip {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 300px;
+    background: #3B4A47;
+    color: var(--paper);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 20px 48px rgba(15,27,43,0.35);
+    z-index: 40;
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    text-align: left;
+  }
+  .liq-badge:hover .liq-tooltip,
+  .liq-badge:focus-visible .liq-tooltip,
+  .liq-badge.open .liq-tooltip {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .liq-tooltip .tt-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .liq-tooltip .tt-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+  }
+  .liq-tooltip .tt-score {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    opacity: 0.6;
+  }
+  .liq-tooltip .tt-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    padding: 7px 0;
+    border-top: 1px solid rgba(246,243,236,0.12);
+  }
+  .liq-tooltip .tt-row:first-of-type { border-top: none; }
+  .liq-tooltip .tt-row .tt-k { opacity: 0.65; }
+  .liq-tooltip .tt-row .tt-v { font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .liq-tooltip .tt-note {
+    margin-top: 12px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    opacity: 0.6;
+    padding-top: 10px;
+    border-top: 1px solid rgba(246,243,236,0.12);
+  }
+
+  /* ---------- DETAIL CARD (Hero feature demo) ---------- */
+  .detail-shell {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .detail-shell { grid-template-columns: 1fr; }
+  }
+
+  .detail-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+
+  .detail-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .detail-top h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 0 0 6px;
+  }
+  .detail-top .isin { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: rgba(15,27,43,0.5); }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin: 24px 0 28px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .detail-grid .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(15,27,43,0.45); margin-bottom: 6px; }
+  .detail-grid .v { font-family: 'Fraunces', serif; font-size: 22px; }
+  .detail-grid .v.accent { color: var(--amber); }
+
+  .invest-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+  .invest-btn:hover { background: var(--ink-soft); transform: translateY(-1px); }
+
+  /* ---------- LIQUIDITY PANEL (Right column) ---------- */
+  .liq-panel {
+    background: #3B4A47;
+    color: var(--paper);
+    border-radius: 22px;
+    padding: 30px;
+    position: relative;
+    overflow: hidden;
+  }
+  .liq-panel::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,134,43,0.22), transparent 70%);
+    pointer-events: none;
+  }
+
+  .liq-panel .eyebrow-mini {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--amber-soft);
+    margin-bottom: 14px;
+  }
+
+  .meter-wrap {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 22px;
+  }
+
+  .meter {
+    position: relative;
+    width: 118px;
+    height: 118px;
+    flex: none;
+  }
+  .meter svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .meter .track { fill: none; stroke: rgba(246,243,236,0.12); stroke-width: 9; }
+  .meter .arc {
+    fill: none;
+    stroke: var(--amber);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-dasharray: 301.6;
+    stroke-dashoffset: 301.6;
+    transition: stroke-dashoffset 1.1s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease;
+  }
+  .meter .meter-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .meter .meter-label .num {
+    font-family: 'Fraunces', serif;
+    font-size: 30px;
+    line-height: 1;
+  }
+  .meter .meter-label .den {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    opacity: 0.55;
+    margin-top: 2px;
+  }
+
+  .meter-copy .tier-name {
+    font-family: 'Fraunces', serif;
+    font-size: 21px;
+    margin-bottom: 4px;
+  }
+  .meter-copy .tier-desc {
+    font-size: 13px;
+    opacity: 0.7;
+    line-height: 1.5;
+    max-width: 220px;
+  }
+
+  .liq-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 22px;
+  }
+  .liq-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 13px 0;
+    border-top: 1px solid rgba(246,243,236,0.1);
+  }
+  .liq-metric-row:first-child { border-top: none; }
+  .liq-metric-row .m-k {
+    font-size: 13px;
+    opacity: 0.75;
+  }
+  .liq-metric-row .m-v {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .trend-strip {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 40px;
+    margin-bottom: 8px;
+  }
+  .trend-strip .bar {
+    flex: 1;
+    background: var(--amber-soft);
+    border-radius: 3px 3px 0 0;
+    opacity: 0.85;
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+  .trend-caption {
+    font-size: 11px;
+    opacity: 0.55;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .methodology-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 20px;
+    font-size: 12.5px;
+    color: var(--amber-soft);
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 1px dotted rgba(233,198,138,0.5);
+    padding-bottom: 2px;
+  }
+
+  /* ---------- SELECTOR CHIPS (interactive demo control) ---------- */
+  .demo-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: var(--white);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(15,27,43,0.6);
+  }
+  .chip.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+  .chip:hover:not(.active) { border-color: var(--ink); color: var(--ink); }
+
+  /* ---------- COMPARISON TABLE ---------- */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .compare-table th, .compare-table td {
+    padding: 15px 18px;
+    text-align: left;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--line);
+  }
+  .compare-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(15,27,43,0.5);
+    background: var(--paper-dim);
+    font-weight: 500;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td.hero-col { font-family: 'Source Serif 4', serif; font-weight: 600; }
+
+  .check { color: var(--teal); font-weight: 700; }
+  .cross { color: rgba(15,27,43,0.25); }
+  .grip-col { background: rgba(200,134,43,0.06); }
+
+  /* ---------- FOOTER NOTE ---------- */
+  .footnote {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: rgba(15,27,43,0.45);
+    line-height: 1.7;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* reveal on load */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: revealUp 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  @keyframes revealUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="masthead reveal" style="animation-delay:0.02s">
+    <div>
+      <p class="eyebrow">Concept prototype · Grip Invest</p>
+      <h1>Exit <em>Signal</em></h1>
+      <p class="subhead">A liquidity transparency layer for bond &amp; SDI listings — showing investors how easily they can exit, before they commit, not after they need to.</p>
+    </div>
+    <div class="masthead-meta">
+      <div><strong>Prepared by</strong> — Manikanta</div>
+      <div><strong>For</strong> — Grip Invest product team</div>
+      <div><strong>Status</strong> — Unsolicited concept, v1</div>
+    </div>
+  </header>
+
+  <!-- THE PROBLEM -->
+  <section>
+    <div class="section-label"><span class="tag">01</span><span class="txt">The problem today</span></div>
+    <div class="scenario">
+      <div class="scenario-cell">
+        <div class="k">What investors see</div>
+        <div class="v">Yield, tenure, credit rating — clearly listed at the point of investing.</div>
+      </div>
+      <div class="scenario-cell problem">
+        <div class="k">What's missing</div>
+        <div class="v">Any signal for how easily this exact bond can be resold before maturity.</div>
+      </div>
+      <div class="scenario-cell">
+        <div class="k">Where it surfaces instead</div>
+        <div class="v">Only after listing on Sell Anytime — when an emergency exit is already underway.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BEFORE: current listing -->
+  <section>
+    <div class="section-label"><span class="tag">02</span><span class="txt">Bond list — current state</span></div>
+    <div class="bond-list">
+      <div class="bond-row">
+        <div class="bond-name-block">
+          <div class="issuer">Northbridge Leasing Pvt Ltd</div>
+          <div class="isin">INE0XY07045 · LeaseX SDI</div>
+        </div>
+        <div class="stat"><div class="k">Yield</div><div class="v">12.4%</div></div>
+        <div class="stat"><div class="k">Tenure</div><div class="v">18 mo</div></div>
+        <div class="stat"><div class="k">Rating</div><span class="rating-pill">A+ CRISIL</span></div>
+        <button class="cta-mini">Invest</button>
+      </div>
+      <div class="bond-row">
+        <div class="bond-name-block">
+          <div class="issuer">Meridian Fleet Finance</div>
+          <div class="isin">INE1AB33012 · Corporate Bond</div>
+        </div>
+        <div class="stat"><div class="k">Yield</div><div class="v">10.8%</div></div>
+        <div class="stat"><div class="k">Tenure</div><div class="v">36 mo</div></div>
+        <div class="stat"><div class="k">Rating</div><span class="rating-pill">AA- ICRA</span></div>
+        <button class="cta-mini">Invest</button>
+      </div>
+    </div>
+    <p style="margin-top:16px; font-size:13.5px; color:rgba(15,27,43,0.5); max-width:560px;">Two bonds, similar yields. Nothing here tells you that one has a deep resale market and the other has almost none — that difference only becomes visible when you try to exit.</p>
+  </section>
+
+  <!-- AFTER: with badge -->
+  <section>
+    <div class="section-label"><span class="tag">03</span><span class="txt">Bond list — with Exit Signal</span></div>
+    <div class="bond-list">
+
+      <div class="bond-row">
+        <div class="bond-name-block">
+          <div class="issuer">Northbridge Leasing Pvt Ltd</div>
+          <div class="isin">INE0XY07045 · LeaseX SDI</div>
+        </div>
+        <div class="stat"><div class="k">Yield</div><div class="v">12.4%</div></div>
+        <div class="stat"><div class="k">Tenure</div><div class="v">18 mo</div></div>
+        <div class="liq-badge low" tabindex="0">
+          <span class="pulse-wrap">
+            <span class="pulse-ring r1"></span>
+            <span class="pulse-ring r2"></span>
+            <span class="pulse-core"></span>
+          </span>
+          <span class="label"><span class="tier">Thin exit</span><span class="days">~22 days typical</span></span>
+          <div class="liq-tooltip">
+            <div class="tt-head"><span class="tt-title">Exit Signal</span><span class="tt-score">3 / 10</span></div>
+            <div class="tt-row"><span class="tt-k">Avg. resale time</span><span class="tt-v">22 days</span></div>
+            <div class="tt-row"><span class="tt-k">Buyers, last 30d</span><span class="tt-v">2</span></div>
+            <div class="tt-row"><span class="tt-k">Avg. exit price</span><span class="tt-v">96.4% of face</span></div>
+            <div class="tt-note">Fewer buyers are actively matching this instrument. Early exits may take longer or need a price adjustment.</div>
+          </div>
+        </div>
+        <button class="cta-mini">Invest</button>
+      </div>
+
+      <div class="bond-row">
+        <div class="bond-name-block">
+          <div class="issuer">Meridian Fleet Finance</div>
+          <div class="isin">INE1AB33012 · Corporate Bond</div>
+        </div>
+        <div class="stat"><div class="k">Yield</div><div class="v">10.8%</div></div>
+        <div class="stat"><div class="k">Tenure</div><div class="v">36 mo</div></div>
+        <div class="liq-badge high" tabindex="0">
+          <span class="pulse-wrap">
+            <span class="pulse-ring r1"></span>
+            <span class="pulse-ring r2"></span>
+            <span class="pulse-core"></span>
+          </span>
+          <span class="label"><span class="tier">Easy exit</span><span class="days">~2 days typical</span></span>
+          <div class="liq-tooltip">
+            <div class="tt-head"><span class="tt-title">Exit Signal</span><span class="tt-score">8.6 / 10</span></div>
+            <div class="tt-row"><span class="tt-k">Avg. resale time</span><span class="tt-v">2 days</span></div>
+            <div class="tt-row"><span class="tt-k">Buyers, last 30d</span><span class="tt-v">41</span></div>
+            <div class="tt-row"><span class="tt-k">Avg. exit price</span><span class="tt-v">99.8% of face</span></div>
+            <div class="tt-note">Consistently active resale demand. Recent exits settled near face value with minimal wait.</div>
+          </div>
+        </div>
+        <button class="cta-mini">Invest</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- DETAIL VIEW: full feature -->
+  <section>
+    <div class="section-label"><span class="tag">04</span><span class="txt">Bond detail page — full panel</span></div>
+
+    <div class="demo-controls">
+      <button class="chip active" data-tier="high">Easy exit example</button>
+      <button class="chip" data-tier="medium">Moderate example</button>
+      <button class="chip" data-tier="low">Thin exit example</button>
+    </div>
+
+    <div class="detail-shell">
+      <div class="detail-card reveal" style="animation-delay:0.05s">
+        <div class="detail-top">
+          <div>
+            <h3 id="dName">Meridian Fleet Finance</h3>
+            <div class="isin" id="dIsin">INE1AB33012 · Corporate Bond · Secured</div>
+          </div>
+          <span class="rating-pill" id="dRating">AA- ICRA</span>
+        </div>
+        <div class="detail-grid">
+          <div><div class="k">Yield (XIRR)</div><div class="v" id="dYield">10.8%</div></div>
+          <div><div class="k">Tenure</div><div class="v" id="dTenure">36 mo</div></div>
+          <div><div class="k">Min. investment</div><div class="v accent">₹10,000</div></div>
+        </div>
+        <p style="font-size:13.5px; line-height:1.7; color:rgba(15,27,43,0.65); margin-bottom:24px;">Secured against a diversified fleet-financing receivables pool. Monthly payouts, principal at maturity. Rated AA- by ICRA with quarterly surveillance.</p>
+        <button class="invest-btn">Invest ₹10,000</button>
+      </div>
+
+      <div class="liq-panel reveal" style="animation-delay:0.12s">
+        <div class="eyebrow-mini">Exit Signal</div>
+        <div class="meter-wrap">
+          <div class="meter">
+            <svg viewBox="0 0 106 106">
+              <circle class="track" cx="53" cy="53" r="48"></circle>
+              <circle class="arc" id="meterArc" cx="53" cy="53" r="48"></circle>
+            </svg>
+            <div class="meter-label">
+              <span class="num" id="meterNum">8.6</span>
+              <span class="den">OUT OF 10</span>
+            </div>
+          </div>
+          <div class="meter-copy">
+            <div class="tier-name" id="tierName">Easy exit</div>
+            <div class="tier-desc" id="tierDesc">Deep, consistent resale demand. Most sellers matched within days, close to face value.</div>
+          </div>
+        </div>
+
+        <div class="liq-metrics">
+          <div class="liq-metric-row"><span class="m-k">Avg. time to resell</span><span class="m-v" id="mDays">2 days</span></div>
+          <div class="liq-metric-row"><span class="m-k">Active buyers (30d)</span><span class="m-v" id="mBuyers">41</span></div>
+          <div class="liq-metric-row"><span class="m-k">Avg. exit price</span><span class="m-v" id="mPrice">99.8% of face</span></div>
+          <div class="liq-metric-row"><span class="m-k">Listings resold (90d)</span><span class="m-v" id="mResold">37 of 40</span></div>
+        </div>
+
+        <div class="eyebrow-mini" style="margin-top:4px;">30-day resale activity</div>
+        <div class="trend-strip" id="trendStrip"></div>
+        <div class="trend-caption">Daily matched exits, last 30 days</div>
+
+        <a class="methodology-link" id="methodLink">How this score is calculated →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- METHODOLOGY (revealed) -->
+  <section id="methodSection" style="display:none;">
+    <div class="section-label"><span class="tag">05</span><span class="txt">How the score is built</span></div>
+    <table class="compare-table">
+      <thead><tr><th>Factor</th><th>Signal used</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td class="hero-col">Resale velocity</td><td>Median days from listing to matched sale, trailing 90 days</td><td>Direct measure of how fast an investor can actually exit</td></tr>
+        <tr><td class="hero-col">Buyer depth</td><td>Distinct buyers who transacted in this instrument, trailing 30 days</td><td>More buyers = less dependence on finding one specific match</td></tr>
+        <tr><td class="hero-col">Price stability</td><td>Average resale price vs. face value on completed exits</td><td>Flags whether exits require a steep discount to attract a buyer</td></tr>
+        <tr><td class="hero-col">Fill rate</td><td>% of Sell Anytime listings that found a buyer within the window</td><td>Distinguishes "slow but sure" from "often unsold"</td></tr>
+        <tr><td class="hero-col">Instrument class baseline</td><td>Historical liquidity pattern for similar tenure / ticket size / issuer type</td><td>Gives new listings a reasonable starting estimate before their own history exists</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- COMPETITIVE CONTEXT -->
+  <section>
+    <div class="section-label"><span class="tag">06</span><span class="txt">Where this stands today</span></div>
+    <table class="compare-table">
+      <thead>
+        <tr><th>Platform</th><th>Secondary exit mechanism</th><th>Pre-investment liquidity signal</th></tr>
+      </thead>
+      <tbody>
+        <tr class="grip-col"><td class="hero-col">Grip Invest</td><td><span class="check">✓</span> Sell Anytime + Marketplace</td><td><span class="cross">✕</span> Not shown yet</td></tr>
+        <tr><td class="hero-col">Wint Wealth</td><td><span class="cross">✕</span> Manual, off-platform</td><td><span class="cross">✕</span> Generic risk disclosure only</td></tr>
+        <tr><td class="hero-col">Jiraaf</td><td><span class="cross">✕</span> Not facilitated in-app</td><td><span class="cross">✕</span> Generic risk disclosure only</td></tr>
+        <tr><td class="hero-col">IndiaBonds</td><td>Exchange-listed bonds only</td><td><span class="cross">✕</span> Not shown yet</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:16px; font-size:13px; color:rgba(15,27,43,0.5); max-width:640px;">Grip is the only platform with the underlying matching data to power this — Sell Anytime and Marketplace already generate exactly the signals (fill time, buyer count, exit price) this concept needs. No competitor is positioned to ship this first.</p>
+  </section>
+
+  <footer class="footnote">
+    Prototype built with sample data for illustration only — not connected to live Grip data.<br>
+    Interactive build: static HTML / CSS / JS, no backend. Intended as a UX concept for internal review.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const tiers = {
+    high: {
+      name: 'Meridian Fleet Finance', isin: 'INE1AB33012 · Corporate Bond · Secured', rating: 'AA- ICRA',
+      yield: '10.8%', tenure: '36 mo',
+      score: 8.6, tierName: 'Easy exit',
+      desc: 'Deep, consistent resale demand. Most sellers matched within days, close to face value.',
+      days: '2 days', buyers: '41', price: '99.8% of face', resold: '37 of 40',
+      arcColor: 'var(--teal)', bars: [30,45,38,60,55,70,65,80,72,90,85,95,88,92,80,75,68,72,78,85,90,82,76,88,95,91,84,79,86,93]
+    },
+    medium: {
+      name: 'Northbridge Warehousing SDI', isin: 'INE2CD19087 · InvoiceX SDI', rating: 'A ICRA',
+      yield: '11.6%', tenure: '24 mo',
+      score: 5.8, tierName: 'Moderate exit',
+      desc: 'Resale demand exists but is uneven. Expect some wait, occasionally a modest price adjustment.',
+      days: '9 days', buyers: '14', price: '98.1% of face', resold: '21 of 30',
+      arcColor: 'var(--amber)', bars: [20,15,30,10,25,40,18,22,35,15,28,10,32,20,15,40,25,18,30,22,10,35,28,15,20,32,25,18,15,22]
+    },
+    low: {
+      name: 'Northbridge Leasing Pvt Ltd', isin: 'INE0XY07045 · LeaseX SDI', rating: 'A+ CRISIL',
+      yield: '12.4%', tenure: '18 mo',
+      score: 3.0, tierName: 'Thin exit',
+      desc: 'Fewer active buyers are matching this instrument. Early exits may take longer or need a price adjustment.',
+      days: '22 days', buyers: '2', price: '96.4% of face', resold: '4 of 11',
+      arcColor: 'var(--rose)', bars: [5,0,8,0,0,10,0,5,0,0,12,0,0,8,0,0,0,15,0,0,5,0,0,10,0,0,0,8,0,5]
+    }
+  };
+
+  const CIRC = 301.6;
+  const el = id => document.getElementById(id);
+
+  function renderTrend(bars){
+    const strip = el('trendStrip');
+    strip.innerHTML = '';
+    const max = Math.max(...bars, 1);
+    bars.forEach((v, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = Math.max((v / max) * 100, 3) + '%';
+      strip.appendChild(bar);
+      setTimeout(() => { bar.style.transform = 'scaleY(1)'; }, 20 + i * 18);
+    });
+  }
+
+  function applyTier(key){
+    const t = tiers[key];
+    el('dName').textContent = t.name;
+    el('dIsin').textContent = t.isin;
+    el('dRating').textContent = t.rating;
+    el('dYield').textContent = t.yield;
+    el('dTenure').textContent = t.tenure;
+    el('tierName').textContent = t.tierName;
+    el('tierDesc').textContent = t.desc;
+    el('mDays').textContent = t.days;
+    el('mBuyers').textContent = t.buyers;
+    el('mPrice').textContent = t.price;
+    el('mResold').textContent = t.resold;
+    el('meterNum').textContent = t.score.toFixed(1);
+
+    const arc = el('meterArc');
+    const offset = CIRC - (t.score / 10) * CIRC;
+    arc.style.stroke = t.arcColor;
+    // reset then animate
+    arc.style.transition = 'none';
+    arc.style.strokeDashoffset = CIRC;
+    void arc.offsetWidth;
+    arc.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(0.16,1,0.3,1), stroke 0.4s ease';
+    requestAnimationFrame(() => { arc.style.strokeDashoffset = offset; });
+
+    renderTrend(t.bars);
+  }
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      applyTier(chip.dataset.tier);
+    });
+  });
+
+  el('methodLink').addEventListener('click', () => {
+    const s = el('methodSection');
+    s.style.display = s.style.display === 'none' ? 'block' : 'none';
+    if (s.style.display === 'block') s.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  // touch support for badges (tap to open tooltip on mobile)
+  document.querySelectorAll('.liq-badge').forEach(badge => {
+    badge.addEventListener('click', (e) => {
+      if (window.matchMedia('(hover: none)').matches) {
+        document.querySelectorAll('.liq-badge.open').forEach(b => { if (b !== badge) b.classList.remove('open'); });
+        badge.classList.toggle('open');
+      }
+    });
+  });
+
+  // init
+  applyTier('high');
+})();
+</script>
+
+</body>
+</html>
